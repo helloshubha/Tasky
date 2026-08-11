@@ -1,0 +1,582 @@
+<!DOCTYPE1 html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Realism Snake and Ladders</title>
+    <style>
+        :root {
+            --board-size: min(90vw, 650px);
+            --tile-size: calc(var(--board-size) / 10);
+            --gold: #d4af37;
+            --wood-dark: #2a1810;
+        }
+
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: radial-gradient(circle, #3a2218 0%, #120a07 100%);
+            color: #f0e6d2;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 10px;
+            overflow-x: hidden;
+        }
+
+        .game-title {
+            text-align: center;
+            font-size: clamp(1.5rem, 4vw, 2.5rem);
+            color: var(--gold);
+            text-shadow: 0 4px 10px rgba(0,0,0,0.8), 0 0 20px rgba(212,175,55,0.3);
+            margin-bottom: 15px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        .main-container {
+            display: flex;
+            flex-direction: row;
+            gap: 25px;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            max-width: 1100px;
+            flex-wrap: wrap;
+        }
+
+        .board-wrapper {
+            position: relative;
+            width: var(--board-size);
+            height: var(--board-size);
+            border-radius: 12px;
+            padding: 12px;
+            background: linear-gradient(145deg, #42271d, #1a0e0a);
+            box-shadow: 0 20px 50px rgba(0,0,0,0.9), inset 0 2px 5px rgba(255,255,255,0.2);
+            perspective: 1000px;
+        }
+
+        #board {
+            width: 100%;
+            height: 100%;
+            display: grid;
+            grid-template-columns: repeat(10, 1fr);
+            grid-template-rows: repeat(10, 1fr);
+            border: 4px solid var(--wood-dark);
+            border-radius: 6px;
+            position: relative;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.8);
+        }
+
+        .tile {
+            position: relative;
+            display: flex;
+            align-items: flex-start;
+            justify-content: flex-start;
+            padding: 3px;
+            font-weight: bold;
+            font-size: clamp(8px, 1.8vw, 13px);
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+            box-shadow: inset 0 0 4px rgba(0,0,0,0.35);
+        }
+
+        .tile:nth-child(4n+1) { background: #b8860b; color: #fff; }
+        .tile:nth-child(4n+2) { background: #8b0000; color: #fff; }
+        .tile:nth-child(4n+3) { background: #1b4d3e; color: #fff; }
+        .tile:nth-child(4n+4) { background: #2f4f4f; color: #fff; }
+
+        canvas#overlay {
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            width: calc(100% - 24px);
+            height: calc(100% - 24px);
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        /* Players */
+        .token {
+            width: calc(var(--tile-size) * 0.55);
+            height: calc(var(--tile-size) * 0.55);
+            border-radius: 50%;
+            position: absolute;
+            z-index: 10;
+            transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+            box-shadow: 0 5px 10px rgba(0,0,0,0.7), inset 0 3px 5px rgba(255,255,255,0.6);
+            border: 2px solid rgba(255,255,255,0.8);
+        }
+
+        .token-p1 {
+            background: radial-gradient(circle at 35% 35%, #ff5252, #8b0000);
+        }
+
+        .token-p2 {
+            background: radial-gradient(circle at 35% 35%, #448aff, #00008b);
+        }
+
+        /* Control Panel */
+        .panel {
+            background: rgba(30, 18, 12, 0.85);
+            backdrop-filter: blur(10px);
+            border: 2px solid var(--gold);
+            border-radius: 12px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: min(90vw, 300px);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.6);
+        }
+
+        .status {
+            font-size: 1.1rem;
+            margin-bottom: 15px;
+            text-align: center;
+            min-height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+        }
+
+        /* 3D Dice */
+        .dice-area {
+            perspective: 600px;
+            margin: 20px 0;
+            width: 80px;
+            height: 80px;
+        }
+
+        .dice {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 1s ease-out;
+            cursor: pointer;
+        }
+
+        .dice-face {
+            position: absolute;
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(145deg, #ffffff, #e6e6e6);
+            border: 1px solid #ccc;
+            border-radius: 12px;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(3, 1fr);
+            padding: 8px;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.2);
+        }
+
+        .dot {
+            background: #222;
+            border-radius: 50%;
+            width: 14px;
+            height: 14px;
+            margin: auto;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.6);
+        }
+
+        .dot.red { background: #d32f2f; }
+
+        /* Dice Face Transforms */
+        .face-1 { transform: rotateY(0deg) translateZ(40px); }
+        .face-2 { transform: rotateY(90deg) translateZ(40px); }
+        .face-3 { transform: rotateX(-90deg) translateZ(40px); }
+        .face-4 { transform: rotateX(90deg) translateZ(40px); }
+        .face-5 { transform: rotateY(-90deg) translateZ(40px); }
+        .face-6 { transform: rotateY(180deg) translateZ(40px); }
+
+        .btn {
+            background: linear-gradient(180deg, #d4af37, #aa820a);
+            border: none;
+            color: #1a0e0a;
+            padding: 12px 24px;
+            font-size: 1rem;
+            font-weight: bold;
+            border-radius: 25px;
+            cursor: pointer;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.4);
+            transition: all 0.2s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 10px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(212,175,55,0.4);
+        }
+
+        .btn:active {
+            transform: translateY(1px);
+        }
+
+        .btn:disabled {
+            background: #555;
+            color: #888;
+            cursor: not-allowed;
+            box-shadow: none;
+            transform: none;
+        }
+
+        .score-board {
+            width: 100%;
+            display: flex;
+            justify-content: space-around;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid rgba(212,175,55,0.3);
+        }
+
+        .score-card {
+            text-align: center;
+        }
+
+        .score-card.active {
+            color: var(--gold);
+            text-shadow: 0 0 8px rgba(212,175,55,0.5);
+        }
+    </style>
+</head>
+<body>
+
+    <h1 class="game-title">Snakes & Ladders</h1>
+
+    <div class="main-container">
+        <div class="board-wrapper">
+            <div id="board"></div>
+            <canvas id="overlay"></canvas>
+            <div id="p1" class="token token-p1"></div>
+            <div id="p2" class="token token-p2"></div>
+        </div>
+
+        <div class="panel">
+            <div id="status" class="status">Red's turn! Roll the dice.</div>
+            
+            <div class="dice-area">
+                <div id="dice" class="dice">
+                    <!-- Face 1 -->
+                    <div class="dice-face face-1">
+                        <div></div><div></div><div></div>
+                        <div></div><div class="dot red"></div><div></div>
+                        <div></div><div></div><div></div>
+                    </div>
+                    <!-- Face 2 -->
+                    <div class="dice-face face-2">
+                        <div class="dot"></div><div></div><div></div>
+                        <div></div><div></div><div></div>
+                        <div></div><div></div><div class="dot"></div>
+                    </div>
+                    <!-- Face 3 -->
+                    <div class="dice-face face-3">
+                        <div class="dot"></div><div></div><div></div>
+                        <div></div><div class="dot"></div><div></div>
+                        <div></div><div></div><div class="dot"></div>
+                    </div>
+                    <!-- Face 4 -->
+                    <div class="dice-face face-4">
+                        <div class="dot"></div><div></div><div class="dot"></div>
+                        <div></div><div></div><div></div>
+                        <div class="dot"></div><div></div><div class="dot"></div>
+                    </div>
+                    <!-- Face 5 -->
+                    <div class="dice-face face-5">
+                        <div class="dot"></div><div></div><div class="dot"></div>
+                        <div></div><div class="dot"></div><div></div>
+                        <div class="dot"></div><div></div><div class="dot"></div>
+                    </div>
+                    <!-- Face 6 -->
+                    <div class="dice-face face-6">
+                        <div class="dot"></div><div></div><div class="dot"></div>
+                        <div class="dot"></div><div></div><div class="dot"></div>
+                        <div class="dot"></div><div></div><div class="dot"></div>
+                    </div>
+                </div>
+            </div>
+
+            <button id="roll-btn" class="btn">Roll Dice</button>
+
+            <div class="score-board">
+                <div id="card-p1" class="score-card active">
+                    <div style="color: #ff5252;">Player 1</div>
+                    <div id="pos-p1">Tile: 1</div>
+                </div>
+                <div id="card-p2" class="score-card">
+                    <div style="color: #448aff;">Player 2</div>
+                    <div id="pos-p2">Tile: 1</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const board = document.getElementById('board');
+        const canvas = document.getElementById('overlay');
+        const ctx = canvas.getContext('2d');
+        const rollBtn = document.getElementById('roll-btn');
+        const dice = document.getElementById('dice');
+        const statusEl = document.getElementById('status');
+
+        const positions = { p1: 1, p2: 1 };
+        let turn = 'p1'; 
+        let isRolling = false;
+
+        // Snakes & Ladders Definitions
+        const snakes = { 28: 10, 37: 3, 48: 16, 75: 32, 94: 71, 96: 42 };
+        const ladders = { 4: 56, 12: 50, 14: 55, 22: 58, 41: 79, 54: 88, 73: 92 };
+
+        // Generate Board Tiles (Zig-Zag pattern from Bottom-Left)
+        function createBoard() {
+            board.innerHTML = '';
+            for (let r = 9; r >= 0; r--) {
+                const isEvenRow = (9 - r) % 2 === 1;
+                for (let c = 0; c < 10; c++) {
+                    const col = isEvenRow ? 9 - c : c;
+                    const tileNum = r * 10 + col + 1;
+                    
+                    const tile = document.createElement('div');
+                    tile.className = 'tile';
+                    tile.id = `tile-${tileNum}`;
+                    tile.innerText = tileNum;
+                    board.appendChild(tile);
+                }
+            }
+        }
+
+        function resizeCanvas() {
+            canvas.width = board.clientWidth;
+            canvas.height = board.clientHeight;
+            drawBoardDecorations();
+            updateTokenPositions();
+        }
+
+        // Get absolute center coordinate of a tile
+        function getTileCoords(tileNum) {
+            const tile = document.getElementById(`tile-${tileNum}`);
+            const boardRect = board.getBoundingClientRect();
+            const tileRect = tile.getBoundingClientRect();
+
+            return {
+                x: tileRect.left - boardRect.left + tileRect.width / 2,
+                y: tileRect.top - boardRect.top + tileRect.height / 2
+            };
+        }
+
+        // Procedural 3D Drawing for Snakes and Ladders
+        function drawBoardDecorations() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw Ladders
+            for (let [start, end] of Object.entries(ladders)) {
+                drawLadder(getTileCoords(start), getTileCoords(end));
+            }
+
+            // Draw Snakes
+            for (let [start, end] of Object.entries(snakes)) {
+                drawSnake(getTileCoords(start), getTileCoords(end));
+            }
+        }
+
+        function drawLadder(p1, p2) {
+            const dx = p2.x - p1.x;
+            const dy = p2.y - p1.y;
+            const angle = Math.atan2(dy, dx);
+            const dist = Math.hypot(dx, dy);
+
+            ctx.save();
+            ctx.translate(p1.x, p1.y);
+            ctx.rotate(angle);
+
+            const width = 14;
+            const steps = Math.floor(dist / 18);
+
+            // Rails
+            ctx.strokeStyle = '#5a3d28';
+            ctx.lineWidth = 5;
+            ctx.shadowColor = 'rgba(0,0,0,0.5)';
+            ctx.shadowBlur = 6;
+            ctx.shadowOffsetY = 4;
+
+            ctx.beginPath();
+            ctx.moveTo(0, -width);
+            ctx.lineTo(dist, -width);
+            ctx.moveTo(0, width);
+            ctx.lineTo(dist, width);
+            ctx.stroke();
+
+            // Rungs
+            ctx.strokeStyle = '#d4af37';
+            ctx.lineWidth = 3;
+            for (let i = 1; i <= steps; i++) {
+                const x = (dist / (steps + 1)) * i;
+                ctx.beginPath();
+                ctx.moveTo(x, -width);
+                ctx.lineTo(x, width);
+                ctx.stroke();
+            }
+
+            ctx.restore();
+        }
+
+        function drawSnake(p1, p2) {
+            const dx = p2.x - p1.x;
+            const dy = p2.y - p1.y;
+            const dist = Math.hypot(dx, dy);
+            const angle = Math.atan2(dy, dx);
+
+            ctx.save();
+            ctx.translate(p1.x, p1.y);
+            ctx.rotate(angle);
+
+            // Snake Body Path (Sine Wave)
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            
+            const waves = 4;
+            const waveHeight = 15;
+            for (let i = 0; i <= dist; i += 5) {
+                const y = Math.sin((i / dist) * Math.PI * waves) * waveHeight;
+                ctx.lineTo(i, y);
+            }
+
+            // Outer Snake Body (Shadowed)
+            ctx.strokeStyle = '#2e7d32';
+            ctx.lineWidth = 10;
+            ctx.lineCap = 'round';
+            ctx.shadowColor = 'rgba(0,0,0,0.6)';
+            ctx.shadowBlur = 8;
+            ctx.shadowOffsetY = 5;
+            ctx.stroke();
+
+            // Inner Pattern
+            ctx.strokeStyle = '#81c784';
+            ctx.lineWidth = 4;
+            ctx.shadowColor = 'transparent';
+            ctx.stroke();
+
+            // Head (at starting high tile)
+            ctx.fillStyle = '#1b5e20';
+            ctx.beginPath();
+            ctx.arc(0, 0, 8, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Eyes
+            ctx.fillStyle = '#fff';
+            ctx.beginPath();
+            ctx.arc(-2, -3, 2, 0, Math.PI * 2);
+            ctx.arc(-2, 3, 2, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.restore();
+        }
+
+        function updateTokenPositions() {
+            ['p1', 'p2'].forEach(p => {
+                const coords = getTileCoords(positions[p]);
+                const token = document.getElementById(p);
+                // Offset slightly so tokens don't perfectly overlap
+                const offset = p === 'p1' ? -8 : 8;
+                token.style.left = `${coords.x + offset - token.clientWidth / 2}px`;
+                token.style.top = `${coords.y + offset - token.clientHeight / 2}px`;
+            });
+
+            document.getElementById('pos-p1').innerText = `Tile: ${positions.p1}`;
+            document.getElementById('pos-p2').innerText = `Tile: ${positions.p2}`;
+        }
+
+        // Dice Mechanics
+        const diceRotations = [
+            { x: 0, y: 0 },         // 1
+            { x: 0, y: -90 },       // 2
+            { x: 90, y: 0 },        // 3
+            { x: -90, y: 0 },       // 4
+            { x: 0, y: 90 },        // 5
+            { x: 180, y: 0 }        // 6
+        ];
+
+        function rollDice() {
+            if (isRolling) return;
+            isRolling = true;
+            rollBtn.disabled = true;
+
+            const val = Math.floor(Math.random() * 6) + 1;
+            
+            // Random spin animation + target rotation
+            const extraX = (Math.floor(Math.random() * 3) + 3) * 360;
+            const extraY = (Math.floor(Math.random() * 3) + 3) * 360;
+            const targetRot = diceRotations[val - 1];
+
+            dice.style.transform = `rotateX(${extraX + targetRot.x}deg) rotateY(${extraY + targetRot.y}deg)`;
+
+            setTimeout(() => {
+                isRolling = false;
+                movePlayer(val);
+            }, 1050);
+        }
+
+        function movePlayer(steps) {
+            let current = positions[turn];
+            if (current + steps <= 100) {
+                positions[turn] += steps;
+                updateTokenPositions();
+
+                // Check for Snakes / Ladders after step animation completes
+                setTimeout(() => {
+                    let landed = positions[turn];
+                    if (ladders[landed]) {
+                        statusEl.innerText = `${turn === 'p1' ? 'Red' : 'Blue'} climbed a ladder! 🚀`;
+                        positions[turn] = ladders[landed];
+                        updateTokenPositions();
+                    } else if (snakes[landed]) {
+                        statusEl.innerText = `${turn === 'p1' ? 'Red' : 'Blue'} got bitten by a snake! 🐍`;
+                        positions[turn] = snakes[landed];
+                        updateTokenPositions();
+                    }
+
+                    // Check Win Condition
+                    if (positions[turn] === 100) {
+                        statusEl.innerText = `🎉 ${turn === 'p1' ? 'Red' : 'Blue'} Wins the Game!`;
+                        rollBtn.disabled = true;
+                        return;
+                    }
+
+                    switchTurn();
+                }, 500);
+            } else {
+                statusEl.innerText = `Need exact roll to win! Pass turn.`;
+                setTimeout(switchTurn, 1000);
+            }
+        }
+
+        function switchTurn() {
+            turn = turn === 'p1' ? 'p2' : 'p1';
+            statusEl.innerText = `${turn === 'p1' ? "Red's" : "Blue's"} turn! Roll the dice.`;
+            
+            document.getElementById('card-p1').classList.toggle('active', turn === 'p1');
+            document.getElementById('card-p2').classList.toggle('active', turn === 'p2');
+            
+            rollBtn.disabled = false;
+        }
+
+        // Initialization
+        window.addEventListener('resize', resizeCanvas);
+        rollBtn.addEventListener('click', rollDice);
+
+        createBoard();
+        // Delay canvas draw slightly to ensure DOM layout settles
+        setTimeout(resizeCanvas, 100);
+    </script>
+</body>
+</html>
