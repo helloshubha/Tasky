@@ -666,73 +666,76 @@ function showMap(lat, lng) {
 
 async function takeFullPageScreenshot() {
 
-    if (isCapturingScreenshot) return;
-
-    const button =
-        document.getElementById("screenshotButton");
-
-    const message =
-        document.getElementById("message");
+    const button = document.getElementById("screenshotButton");
+    const message = document.getElementById("message");
 
     try {
 
-        if (typeof html2canvas === "undefined") {
-            throw new Error(
-                "Screenshot library could not be loaded. Check your internet connection."
-            );
-        }
-
-        isCapturingScreenshot = true;
         button.disabled = true;
         button.innerText = "CAPTURING FULL PAGE...";
 
-        message.innerText =
-            "Capturing the complete webpage. Please wait...";
+        message.innerText = "Preparing full-page screenshot...";
 
-        // Allow the browser to render the latest clock/location updates.
-        await new Promise(resolve => requestAnimationFrame(resolve));
+        const target = document.querySelector(".container");
 
-        const pageWidth = Math.max(
-            document.documentElement.scrollWidth,
-            document.body.scrollWidth
-        );
+        // Get complete content dimensions
+        const fullWidth = target.scrollWidth;
+        const fullHeight = target.scrollHeight;
 
-        const pageHeight = Math.max(
-            document.documentElement.scrollHeight,
-            document.body.scrollHeight
-        );
+        const canvas = await html2canvas(target, {
 
-        const canvas = await html2canvas(
-            document.documentElement,
-            {
-                scale: 2,
-                useCORS: true,
-                allowTaint: false,
-                backgroundColor: "#f1f5f9",
-                width: pageWidth,
-                height: pageHeight,
-                windowWidth: pageWidth,
-                windowHeight: pageHeight,
-                scrollX: 0,
-                scrollY: -window.scrollY
+            scale: 2,
+
+            useCORS: true,
+
+            allowTaint: false,
+
+            backgroundColor: "#f1f5f9",
+
+            width: fullWidth,
+
+            height: fullHeight,
+
+            windowWidth: Math.max(
+                document.documentElement.clientWidth,
+                fullWidth
+            ),
+
+            windowHeight: fullHeight,
+
+            scrollX: 0,
+
+            scrollY: 0,
+
+            onclone: function(clonedDocument) {
+
+                const clonedTarget =
+                    clonedDocument.querySelector(".container");
+
+                clonedTarget.style.maxHeight = "none";
+                clonedTarget.style.height = "auto";
+                clonedTarget.style.overflow = "visible";
+
+                clonedDocument.body.style.height = "auto";
+                clonedDocument.body.style.overflow = "visible";
+
+                clonedDocument.documentElement.style.height = "auto";
+                clonedDocument.documentElement.style.overflow = "visible";
             }
-        );
 
-        const imageURL = canvas.toDataURL("image/png");
+        });
 
+        // Download PNG
         const link = document.createElement("a");
-        link.href = imageURL;
-        link.download =
-            "Employee_Location_Screenshot_" +
-            new Date().toISOString().replace(/[:.]/g, "-") +
-            ".png";
 
-        document.body.appendChild(link);
+        link.download = "Employee_Location_Full_Screenshot.png";
+
+        link.href = canvas.toDataURL("image/png");
+
         link.click();
-        document.body.removeChild(link);
 
         message.innerText =
-            "Full-page screenshot captured and downloaded successfully.";
+            "Full-page screenshot downloaded successfully.";
 
         button.innerText = "✓ SCREENSHOT CAPTURED";
 
@@ -741,21 +744,19 @@ async function takeFullPageScreenshot() {
     catch(error) {
 
         message.innerText =
-            "Unable to capture screenshot: " + error.message;
+            "Screenshot failed: " + error.message;
 
         button.innerText = "📸 TAKE FULL PAGE SCREENSHOT";
-        button.disabled = false;
 
     }
 
     finally {
 
-        isCapturingScreenshot = false;
+        button.disabled = false;
 
     }
 
 }
-
 
 // ==========================================
 // INITIALIZE LOCATION
