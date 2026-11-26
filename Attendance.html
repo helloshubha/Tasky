@@ -1,0 +1,1097 @@
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+<meta charset="UTF-8">
+
+<meta name="viewport"
+      content="width=device-width, initial-scale=1.0">
+
+<title>Employee Location Reporting</title>
+
+<!-- HTML to PDF library -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.3/html2pdf.bundle.min.js"></script>
+
+<style>
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #f1f5f9;
+    color: #1e293b;
+}
+
+.container {
+    max-width: 520px;
+    margin: 20px auto;
+    padding: 16px;
+}
+
+/* HEADER */
+
+.header {
+    text-align: center;
+    padding: 22px 15px;
+    background: #123c63;
+    color: white;
+    border-radius: 16px 16px 0 0;
+}
+
+.header h2 {
+    margin: 0 0 8px;
+    font-size: 21px;
+}
+
+.clock {
+    font-size: 30px;
+    font-weight: bold;
+    margin-top: 12px;
+}
+
+.date {
+    font-size: 13px;
+    margin-top: 5px;
+    opacity: 0.85;
+}
+
+/* CONTENT */
+
+.content {
+    background: white;
+    padding: 20px;
+    border-radius: 0 0 16px 16px;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.07);
+}
+
+.section-title {
+    font-size: 16px;
+    font-weight: bold;
+    margin-bottom: 12px;
+    margin-top: 22px;
+}
+
+.section-title:first-child {
+    margin-top: 0;
+}
+
+/* CAMERA */
+
+.camera-box {
+    position: relative;
+    width: 100%;
+    overflow: hidden;
+    background: #111827;
+    border-radius: 12px;
+}
+
+video {
+    width: 100%;
+    display: block;
+    aspect-ratio: 4 / 3;
+    object-fit: cover;
+}
+
+.camera-label {
+    position: absolute;
+    bottom: 12px;
+    left: 12px;
+    background: rgba(0,0,0,0.65);
+    color: white;
+    padding: 7px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+}
+
+/* STATUS */
+
+.status-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: #f1f5f9;
+    padding: 13px;
+    border-radius: 9px;
+    margin-top: 12px;
+    font-size: 14px;
+}
+
+.status-dot {
+    width: 10px;
+    height: 10px;
+    background: #f59e0b;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.status-dot.active {
+    background: #16a34a;
+}
+
+.status-dot.error {
+    background: #dc2626;
+}
+
+.retry {
+    width: 100%;
+    margin-top: 10px;
+    padding: 11px;
+    background: #475569;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+/* LOCATION */
+
+.location-details {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    padding: 15px;
+    border-radius: 10px;
+    margin-top: 12px;
+    font-size: 14px;
+    line-height: 2;
+    overflow-wrap: anywhere;
+}
+
+.location-details strong {
+    color: #123c63;
+}
+
+/* MAP */
+
+#map {
+    width: 100%;
+    height: 230px;
+    margin-top: 12px;
+    border-radius: 10px;
+    overflow: hidden;
+    background: #e2e8f0;
+}
+
+#map iframe {
+    width: 100%;
+    height: 100%;
+    border: 0;
+}
+
+/* SEND */
+
+.send-button {
+    width: 100%;
+    border: none;
+    border-radius: 10px;
+    background: #087b50;
+    color: white;
+    font-size: 18px;
+    font-weight: bold;
+    padding: 17px;
+    margin-top: 25px;
+    cursor: pointer;
+}
+
+.send-button:disabled {
+    background: #94a3b8;
+    cursor: not-allowed;
+}
+
+#message {
+    text-align: center;
+    margin-top: 15px;
+    font-size: 14px;
+    font-weight: bold;
+    line-height: 1.5;
+}
+
+.footer {
+    text-align: center;
+    font-size: 12px;
+    color: #64748b;
+    margin-top: 18px;
+    line-height: 1.6;
+}
+
+@media(max-width:480px) {
+
+    .container {
+        margin: 0;
+        padding: 10px;
+    }
+
+    .content {
+        padding: 15px;
+    }
+
+    .clock {
+        font-size: 27px;
+    }
+
+    #map {
+        height: 250px;
+    }
+
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="container">
+
+    <!-- HEADER -->
+
+    <div class="header">
+
+        <h2>📍 Location Reporting</h2>
+
+        <div>Current Date & Time</div>
+
+        <div class="clock" id="clock">
+            --:--:--
+        </div>
+
+        <div class="date" id="date">
+            Loading date...
+        </div>
+
+    </div>
+
+
+    <div class="content">
+
+        <!-- CAMERA -->
+
+        <div class="section-title">
+            📷 Your Live Camera
+        </div>
+
+        <div class="camera-box">
+
+            <video id="video"
+                   autoplay
+                   playsinline
+                   muted>
+            </video>
+
+            <div class="camera-label">
+                LIVE CAMERA
+            </div>
+
+        </div>
+
+        <div class="status-row">
+
+            <span class="status-dot"
+                  id="cameraDot">
+            </span>
+
+            <span id="cameraStatus">
+                Connecting to camera...
+            </span>
+
+        </div>
+
+        <button class="retry"
+                id="retryCamera"
+                onclick="startCamera()"
+                hidden>
+            Retry Camera
+        </button>
+
+
+        <!-- LOCATION -->
+
+        <div class="section-title">
+            🌍 Your Current Location
+        </div>
+
+        <div class="status-row">
+
+            <span class="status-dot"
+                  id="locationDot">
+            </span>
+
+            <span id="locationStatus">
+                Detecting your current location...
+            </span>
+
+        </div>
+
+        <button class="retry"
+                id="retryLocation"
+                onclick="initializeLocation()"
+                hidden>
+            Retry Location
+        </button>
+
+        <div class="location-details">
+
+            <div>
+                Latitude:
+                <strong id="latitude">Detecting...</strong>
+            </div>
+
+            <div>
+                Longitude:
+                <strong id="longitude">Detecting...</strong>
+            </div>
+
+            <div>
+                Accuracy:
+                <strong id="accuracy">--</strong>
+            </div>
+
+        </div>
+
+
+        <!-- GOOGLE MAP -->
+
+        <div class="section-title">
+            🗺️ Location Map
+        </div>
+
+        <div id="map">
+
+            <div style="
+                text-align:center;
+                padding:85px 10px;
+                color:#64748b;">
+
+                Waiting for location...
+
+            </div>
+
+        </div>
+
+
+        <!-- SEND BUTTON -->
+
+        <button class="send-button"
+                id="sendButton"
+                onclick="sendReport()">
+
+            ✉️ GENERATE PDF & OPEN OUTLOOK
+
+        </button>
+
+        <div id="message"></div>
+
+
+        <div class="footer">
+
+            Your photograph and current location will be
+            included in a PDF report.
+
+            <br>
+
+            Outlook will open with a pre-filled email.
+            Please attach the downloaded PDF and send it.
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<script>
+
+// ==========================================
+// CONFIGURATION
+// ==========================================
+
+// Change this to your manager's email address.
+
+const MANAGER_EMAIL = "manager@company.com";
+
+const EMAIL_SUBJECT = "Employee Location Report";
+
+
+// ==========================================
+// GLOBAL VARIABLES
+// ==========================================
+
+let cameraStream = null;
+
+let latitude = null;
+let longitude = null;
+let locationAccuracy = null;
+
+let isSending = false;
+
+
+// ==========================================
+// CLOCK
+// ==========================================
+
+function updateClock() {
+
+    const now = new Date();
+
+    document.getElementById("clock").innerText =
+        now.toLocaleTimeString("en-IN", {
+            hour12: true
+        });
+
+    document.getElementById("date").innerText =
+        now.toLocaleDateString("en-IN", {
+            weekday: "long",
+            day: "numeric",
+            month: "long",
+            year: "numeric"
+        });
+
+}
+
+updateClock();
+
+setInterval(updateClock, 1000);
+
+
+// ==========================================
+// CAMERA INITIALIZATION
+// ==========================================
+
+async function startCamera() {
+
+    const status =
+        document.getElementById("cameraStatus");
+
+    const dot =
+        document.getElementById("cameraDot");
+
+    const retry =
+        document.getElementById("retryCamera");
+
+    try {
+
+        if (!navigator.mediaDevices?.getUserMedia) {
+
+            throw new Error(
+                "Camera requires HTTPS or localhost."
+            );
+
+        }
+
+        if (cameraStream) {
+
+            cameraStream.getTracks().forEach(track => {
+                track.stop();
+            });
+
+        }
+
+        status.innerText =
+            "Requesting camera permission...";
+
+        cameraStream =
+            await navigator.mediaDevices.getUserMedia({
+
+                video: {
+                    facingMode: {
+                        ideal: "environment"
+                    },
+                    width: {
+                        ideal: 1280
+                    },
+                    height: {
+                        ideal: 720
+                    }
+                },
+
+                audio: false
+
+            });
+
+        const video =
+            document.getElementById("video");
+
+        video.srcObject = cameraStream;
+
+        await video.play();
+
+        dot.classList.remove("error");
+        dot.classList.add("active");
+
+        status.innerText =
+            "Camera is ready.";
+
+        retry.hidden = true;
+
+    }
+
+    catch(error) {
+
+        dot.classList.remove("active");
+        dot.classList.add("error");
+
+        status.innerText =
+            "Camera unavailable: " + error.message;
+
+        retry.hidden = false;
+
+    }
+
+}
+
+
+// ==========================================
+// LOCATION
+// ==========================================
+
+function getLocation() {
+
+    return new Promise((resolve, reject) => {
+
+        if (!navigator.geolocation) {
+
+            reject(
+                new Error(
+                    "Location is not supported."
+                )
+            );
+
+            return;
+        }
+
+        document.getElementById("locationStatus")
+            .innerText =
+            "Detecting your location...";
+
+        navigator.geolocation.getCurrentPosition(
+
+            function(position) {
+
+                latitude =
+                    position.coords.latitude;
+
+                longitude =
+                    position.coords.longitude;
+
+                locationAccuracy =
+                    position.coords.accuracy;
+
+                document.getElementById("latitude")
+                    .innerText =
+                    latitude.toFixed(6);
+
+                document.getElementById("longitude")
+                    .innerText =
+                    longitude.toFixed(6);
+
+                document.getElementById("accuracy")
+                    .innerText =
+                    "±" +
+                    Math.round(locationAccuracy) +
+                    " metres";
+
+                document.getElementById("locationStatus")
+                    .innerText =
+                    "Location captured successfully.";
+
+                const dot =
+                    document.getElementById("locationDot");
+
+                dot.classList.remove("error");
+                dot.classList.add("active");
+
+                document.getElementById("retryLocation")
+                    .hidden = true;
+
+                showMap(latitude, longitude);
+
+                resolve(position);
+
+            },
+
+            function(error) {
+
+                const dot =
+                    document.getElementById("locationDot");
+
+                dot.classList.remove("active");
+                dot.classList.add("error");
+
+                document.getElementById("locationStatus")
+                    .innerText =
+                    "Location unavailable: " +
+                    error.message;
+
+                document.getElementById("retryLocation")
+                    .hidden = false;
+
+                reject(new Error(error.message));
+
+            },
+
+            {
+                enableHighAccuracy: true,
+                timeout: 20000,
+                maximumAge: 0
+            }
+
+        );
+
+    });
+
+}
+
+
+// ==========================================
+// AUTOMATIC GOOGLE MAP
+// ==========================================
+
+function showMap(lat, lng) {
+
+    const mapURL =
+        "https://maps.google.com/maps?q=" +
+        encodeURIComponent(lat + "," + lng) +
+        "&z=16&output=embed";
+
+    document.getElementById("map").innerHTML = `
+
+        <iframe
+            title="Current location map"
+            loading="lazy"
+            src="${mapURL}"
+            allowfullscreen>
+        </iframe>
+
+    `;
+
+}
+
+
+// ==========================================
+// CAPTURE PHOTO
+// ==========================================
+
+function capturePhoto() {
+
+    const video =
+        document.getElementById("video");
+
+    if (!cameraStream ||
+        !video.videoWidth ||
+        !video.videoHeight) {
+
+        throw new Error(
+            "Camera is not ready. Please enable camera access."
+        );
+
+    }
+
+    const canvas =
+        document.createElement("canvas");
+
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+
+    const context =
+        canvas.getContext("2d");
+
+    context.drawImage(
+        video,
+        0,
+        0,
+        canvas.width,
+        canvas.height
+    );
+
+    return new Promise((resolve, reject) => {
+
+        canvas.toBlob(
+
+            blob => {
+
+                if (blob) {
+                    resolve(blob);
+                } else {
+                    reject(
+                        new Error("Photo capture failed.")
+                    );
+                }
+
+            },
+
+            "image/jpeg",
+
+            0.85
+
+        );
+
+    });
+
+}
+
+
+// ==========================================
+// CONVERT PHOTO TO BASE64
+// ==========================================
+
+function blobToBase64(blob) {
+
+    return new Promise((resolve, reject) => {
+
+        const reader = new FileReader();
+
+        reader.onload = () => resolve(reader.result);
+
+        reader.onerror = () => reject(
+            new Error("Unable to read photograph.")
+        );
+
+        reader.readAsDataURL(blob);
+
+    });
+
+}
+
+
+// ==========================================
+// GENERATE PDF
+// ==========================================
+
+async function generatePDF(photoData, position) {
+
+    const lat = position.coords.latitude;
+    const lng = position.coords.longitude;
+
+    const accuracy = position.coords.accuracy;
+
+    const reportTime = new Date().toLocaleString();
+
+    const report = document.createElement("div");
+
+    report.style.padding = "25px";
+    report.style.fontFamily = "Arial";
+    report.style.color = "#263445";
+    report.style.background = "#ffffff";
+
+    report.innerHTML = `
+
+        <div style="
+            border-bottom:3px solid #123c63;
+            padding-bottom:15px;">
+
+            <h2 style="color:#123c63;">
+                Employee Location Report
+            </h2>
+
+            <p style="color:#64748b;">
+                Photograph and geographical location report
+            </p>
+
+        </div>
+
+        <h3>Report Details</h3>
+
+        <p>
+            <b>Date & Time:</b>
+            ${reportTime}
+        </p>
+
+        <p>
+            <b>Latitude:</b>
+            ${lat}
+        </p>
+
+        <p>
+            <b>Longitude:</b>
+            ${lng}
+        </p>
+
+        <p>
+            <b>Location Accuracy:</b>
+            ±${Math.round(accuracy)} metres
+        </p>
+
+        <h3>Captured Photograph</h3>
+
+        <img src="${photoData}"
+             style="
+                width:100%;
+                max-width:450px;
+                border-radius:8px;
+             ">
+
+        <h3>Location Reference</h3>
+
+        <p>
+            <a href="https://www.google.com/maps?q=${lat},${lng}">
+                View Location in Google Maps
+            </a>
+        </p>
+
+        <p style="
+            margin-top:35px;
+            color:#64748b;
+            font-size:11px;
+            border-top:1px solid #ddd;
+            padding-top:12px;">
+
+            Automatically generated employee location report.
+
+        </p>
+
+    `;
+
+    document.body.appendChild(report);
+
+    try {
+
+        const options = {
+
+            margin: 10,
+
+            filename: "Employee_Location_Report.pdf",
+
+            image: {
+                type: "jpeg",
+                quality: 0.95
+            },
+
+            html2canvas: {
+                scale: 2,
+                useCORS: true
+            },
+
+            jsPDF: {
+                unit: "mm",
+                format: "a4",
+                orientation: "portrait"
+            }
+
+        };
+
+        await html2pdf()
+            .set(options)
+            .from(report)
+            .save();
+
+    }
+
+    finally {
+
+        document.body.removeChild(report);
+
+    }
+
+}
+
+
+// ==========================================
+// OPEN OUTLOOK
+// ==========================================
+
+function openOutlook(position) {
+
+    const lat = position.coords.latitude;
+    const lng = position.coords.longitude;
+
+    const accuracy = position.coords.accuracy;
+
+    const reportTime = new Date().toLocaleString();
+
+    const subject = EMAIL_SUBJECT;
+
+    const body = `Hello,
+
+Please find my latest location report.
+
+Date & Time: ${reportTime}
+
+Latitude: ${lat}
+Longitude: ${lng}
+Accuracy: ${Math.round(accuracy)} metres
+
+Google Maps:
+https://www.google.com/maps?q=${lat},${lng}
+
+Please find the generated PDF report attached.
+
+Regards`;
+
+    const outlookURL =
+        "mailto:" +
+        MANAGER_EMAIL +
+        "?subject=" +
+        encodeURIComponent(subject) +
+        "&body=" +
+        encodeURIComponent(body);
+
+    window.location.href = outlookURL;
+
+}
+
+
+// ==========================================
+// SEND REPORT
+// ==========================================
+
+async function sendReport() {
+
+    if (isSending) return;
+
+    const button =
+        document.getElementById("sendButton");
+
+    const message =
+        document.getElementById("message");
+
+    try {
+
+        if (!cameraStream) {
+
+            throw new Error(
+                "Please enable camera access first."
+            );
+
+        }
+
+        if (typeof html2pdf === "undefined") {
+
+            throw new Error(
+                "PDF library could not be loaded. Check your internet connection."
+            );
+
+        }
+
+        isSending = true;
+
+        button.disabled = true;
+
+        button.innerText =
+            "PROCESSING REPORT...";
+
+        // STEP 1: Capture photograph
+
+        message.innerText =
+            "Step 1 of 3: Capturing photograph...";
+
+        const photoBlob = await capturePhoto();
+
+        // STEP 2: Refresh GPS location
+
+        message.innerText =
+            "Step 2 of 3: Refreshing GPS location...";
+
+        const position = await getLocation();
+
+        // STEP 3: Generate PDF
+
+        message.innerText =
+            "Step 3 of 3: Generating PDF report...";
+
+        const photoData =
+            await blobToBase64(photoBlob);
+
+        await generatePDF(photoData, position);
+
+        // STEP 4: Open Outlook
+
+        message.innerText =
+            "PDF generated. Opening your email application...";
+
+        button.innerText =
+            "PDF GENERATED ✓";
+
+        // Stop camera
+
+        if (cameraStream) {
+
+            cameraStream.getTracks().forEach(track => {
+                track.stop();
+            });
+
+            cameraStream = null;
+
+        }
+
+        openOutlook(position);
+
+        message.innerText =
+            "PDF downloaded. Please attach it to the email and send.";
+
+        button.innerText =
+            "✓ REPORT PREPARED";
+
+    }
+
+    catch(error) {
+
+        message.innerText =
+            "Unable to prepare report: " +
+            error.message;
+
+        button.disabled = false;
+
+        button.innerText =
+            "✉️ GENERATE PDF & OPEN OUTLOOK";
+
+    }
+
+    finally {
+
+        isSending = false;
+
+    }
+
+}
+
+
+// ==========================================
+// INITIALIZE LOCATION
+// ==========================================
+
+async function initializeLocation() {
+
+    try {
+
+        await getLocation();
+
+    }
+
+    catch(error) {
+
+        console.log(
+            "Location initialization failed:",
+            error.message
+        );
+
+    }
+
+}
+
+
+// ==========================================
+// INITIALIZE APPLICATION ON PAGE LOAD
+// ==========================================
+
+window.addEventListener("load", function() {
+
+    updateClock();
+
+    // Automatically start camera
+
+    startCamera();
+
+    // Automatically detect GPS and display map
+
+    initializeLocation();
+
+});
+
+</script>
+
+</body>
+</html>
