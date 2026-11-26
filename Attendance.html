@@ -1,21 +1,14 @@
 
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-
 <meta charset="UTF-8">
-
-<meta name="viewport"
-      content="width=device-width, initial-scale=1.0">
-
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Employee Location Reporting</title>
 
-<!-- Full-page screenshot library -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
 <style>
-
 * {
     box-sizing: border-box;
 }
@@ -32,8 +25,6 @@ body {
     margin: 20px auto;
     padding: 16px;
 }
-
-/* HEADER */
 
 .header {
     text-align: center;
@@ -60,8 +51,6 @@ body {
     opacity: 0.85;
 }
 
-/* CONTENT */
-
 .content {
     background: white;
     padding: 20px;
@@ -79,8 +68,6 @@ body {
 .section-title:first-child {
     margin-top: 0;
 }
-
-/* CAMERA */
 
 .camera-box {
     position: relative;
@@ -107,8 +94,6 @@ video {
     border-radius: 20px;
     font-size: 12px;
 }
-
-/* STATUS */
 
 .status-row {
     display: flex;
@@ -148,8 +133,6 @@ video {
     cursor: pointer;
 }
 
-/* LOCATION */
-
 .location-details {
     background: #f8fafc;
     border: 1px solid #e2e8f0;
@@ -164,8 +147,6 @@ video {
 .location-details strong {
     color: #123c63;
 }
-
-/* MAP */
 
 #map {
     width: 100%;
@@ -182,15 +163,13 @@ video {
     border: 0;
 }
 
-/* SEND */
-
 .send-button {
     width: 100%;
     border: none;
     border-radius: 10px;
     background: #087b50;
     color: white;
-    font-size: 18px;
+    font-size: 17px;
     font-weight: bold;
     padding: 17px;
     margin-top: 25px;
@@ -219,7 +198,6 @@ video {
 }
 
 @media(max-width:480px) {
-
     .container {
         margin: 0;
         padding: 10px;
@@ -236,11 +214,8 @@ video {
     #map {
         height: 250px;
     }
-
 }
-
 </style>
-
 </head>
 
 <body>
@@ -264,7 +239,6 @@ video {
         </div>
 
     </div>
-
 
     <div class="content">
 
@@ -290,9 +264,7 @@ video {
 
         <div class="status-row">
 
-            <span class="status-dot"
-                  id="cameraDot">
-            </span>
+            <span class="status-dot" id="cameraDot"></span>
 
             <span id="cameraStatus">
                 Connecting to camera...
@@ -307,6 +279,12 @@ video {
             Retry Camera
         </button>
 
+        <button class="retry"
+                id="switchCamera"
+                onclick="switchCamera()"
+                hidden>
+            🔄 Switch Camera
+        </button>
 
         <!-- LOCATION -->
 
@@ -316,9 +294,7 @@ video {
 
         <div class="status-row">
 
-            <span class="status-dot"
-                  id="locationDot">
-            </span>
+            <span class="status-dot" id="locationDot"></span>
 
             <span id="locationStatus">
                 Detecting your current location...
@@ -352,7 +328,6 @@ video {
 
         </div>
 
-
         <!-- GOOGLE MAP -->
 
         <div class="section-title">
@@ -372,8 +347,7 @@ video {
 
         </div>
 
-
-        <!-- FULL PAGE SCREENSHOT BUTTON -->
+        <!-- SCREENSHOT BUTTON -->
 
         <button class="send-button"
                 id="screenshotButton"
@@ -385,23 +359,20 @@ video {
 
         <div id="message"></div>
 
-
         <div class="footer">
 
-            Your photograph and current location will be
-            included in a PDF report.
+            Capture the complete webpage including
+            the camera preview and current GPS location.
 
             <br>
 
-            Outlook will open with a pre-filled email.
-            Please attach the downloaded PDF and send it.
+            The screenshot will be downloaded as a PNG image.
 
         </div>
 
     </div>
 
 </div>
-
 
 <script>
 
@@ -410,6 +381,8 @@ video {
 // ==========================================
 
 let cameraStream = null;
+
+let currentFacingMode = "environment";
 
 let latitude = null;
 let longitude = null;
@@ -461,6 +434,9 @@ async function startCamera() {
     const retry =
         document.getElementById("retryCamera");
 
+    const switchButton =
+        document.getElementById("switchCamera");
+
     try {
 
         if (!navigator.mediaDevices?.getUserMedia) {
@@ -477,17 +453,18 @@ async function startCamera() {
                 track.stop();
             });
 
+            cameraStream = null;
+
         }
 
-        status.innerText =
-            "Requesting camera permission...";
+        status.innerText = "Connecting to camera...";
 
         cameraStream =
             await navigator.mediaDevices.getUserMedia({
 
                 video: {
                     facingMode: {
-                        ideal: "environment"
+                        ideal: currentFacingMode
                     },
                     width: {
                         ideal: 1280
@@ -512,9 +489,17 @@ async function startCamera() {
         dot.classList.add("active");
 
         status.innerText =
-            "Camera is ready.";
+            currentFacingMode === "environment"
+                ? "Back camera is active."
+                : "Front camera is active.";
 
         retry.hidden = true;
+        switchButton.hidden = false;
+
+        switchButton.innerText =
+            currentFacingMode === "environment"
+                ? "🔄 Switch to Front Camera"
+                : "🔄 Switch to Back Camera";
 
     }
 
@@ -527,6 +512,45 @@ async function startCamera() {
             "Camera unavailable: " + error.message;
 
         retry.hidden = false;
+
+        switchButton.hidden = true;
+
+    }
+
+}
+
+
+// ==========================================
+// SWITCH FRONT / BACK CAMERA
+// ==========================================
+
+async function switchCamera() {
+
+    const previousMode = currentFacingMode;
+
+    currentFacingMode =
+        currentFacingMode === "environment"
+            ? "user"
+            : "environment";
+
+    const button =
+        document.getElementById("switchCamera");
+
+    button.disabled = true;
+
+    try {
+
+        await startCamera();
+
+        if (!cameraStream) {
+            currentFacingMode = previousMode;
+        }
+
+    }
+
+    finally {
+
+        button.disabled = false;
 
     }
 
@@ -550,6 +574,7 @@ function getLocation() {
             );
 
             return;
+
         }
 
         document.getElementById("locationStatus")
@@ -636,7 +661,7 @@ function getLocation() {
 
 
 // ==========================================
-// AUTOMATIC GOOGLE MAP
+// GOOGLE MAP
 // ==========================================
 
 function showMap(lat, lng) {
@@ -666,21 +691,43 @@ function showMap(lat, lng) {
 
 async function takeFullPageScreenshot() {
 
-    const button = document.getElementById("screenshotButton");
-    const message = document.getElementById("message");
+    if (isCapturingScreenshot) return;
+
+    const button =
+        document.getElementById("screenshotButton");
+
+    const message =
+        document.getElementById("message");
 
     try {
 
+        if (typeof html2canvas === "undefined") {
+
+            throw new Error(
+                "Screenshot library could not be loaded."
+            );
+
+        }
+
+        isCapturingScreenshot = true;
+
         button.disabled = true;
-        button.innerText = "CAPTURING FULL PAGE...";
 
-        message.innerText = "Preparing full-page screenshot...";
+        button.innerText =
+            "CAPTURING FULL PAGE...";
 
-        const target = document.querySelector(".container");
+        message.innerText =
+            "Preparing full-page screenshot...";
 
-        // Get complete content dimensions
+        const target =
+            document.querySelector(".container");
+
+        // Get the full content dimensions.
+
         const fullWidth = target.scrollWidth;
         const fullHeight = target.scrollHeight;
+
+        // Capture complete container.
 
         const canvas = await html2canvas(target, {
 
@@ -721,42 +768,78 @@ async function takeFullPageScreenshot() {
 
                 clonedDocument.documentElement.style.height = "auto";
                 clonedDocument.documentElement.style.overflow = "visible";
+
             }
 
         });
 
-        // Download PNG
-        const link = document.createElement("a");
+        // Convert canvas to PNG.
 
-        link.download = "Employee_Location_Full_Screenshot.png";
+        canvas.toBlob(function(blob) {
 
-        link.href = canvas.toDataURL("image/png");
+            if (!blob) {
 
-        link.click();
+                message.innerText =
+                    "Unable to generate screenshot.";
 
-        message.innerText =
-            "Full-page screenshot downloaded successfully.";
+                return;
 
-        button.innerText = "✓ SCREENSHOT CAPTURED";
+            }
+
+            const imageURL =
+                URL.createObjectURL(blob);
+
+            const link =
+                document.createElement("a");
+
+            link.href = imageURL;
+
+            link.download =
+                "Employee_Location_Screenshot_" +
+                new Date().toISOString().replace(/[:.]/g, "-") +
+                ".png";
+
+            document.body.appendChild(link);
+
+            link.click();
+
+            document.body.removeChild(link);
+
+            setTimeout(() => {
+                URL.revokeObjectURL(imageURL);
+            }, 1000);
+
+            message.innerText =
+                "Full-page screenshot downloaded successfully.";
+
+            button.innerText =
+                "✓ SCREENSHOT CAPTURED";
+
+            button.disabled = false;
+
+            isCapturingScreenshot = false;
+
+        }, "image/png");
 
     }
 
     catch(error) {
 
         message.innerText =
-            "Screenshot failed: " + error.message;
+            "Unable to capture screenshot: " +
+            error.message;
 
-        button.innerText = "📸 TAKE FULL PAGE SCREENSHOT";
-
-    }
-
-    finally {
+        button.innerText =
+            "📸 TAKE FULL PAGE SCREENSHOT";
 
         button.disabled = false;
+
+        isCapturingScreenshot = false;
 
     }
 
 }
+
 
 // ==========================================
 // INITIALIZE LOCATION
@@ -783,18 +866,18 @@ async function initializeLocation() {
 
 
 // ==========================================
-// INITIALIZE APPLICATION ON PAGE LOAD
+// INITIALIZE APPLICATION
 // ==========================================
 
 window.addEventListener("load", function() {
 
     updateClock();
 
-    // Automatically start camera
+    // Automatically start back camera.
 
     startCamera();
 
-    // Automatically detect GPS and display map
+    // Automatically detect GPS and display map.
 
     initializeLocation();
 
