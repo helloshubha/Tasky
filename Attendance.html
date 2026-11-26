@@ -11,8 +11,8 @@
 
 <title>Employee Location Reporting</title>
 
-<!-- HTML to PDF library -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.3/html2pdf.bundle.min.js"></script>
+<!-- Full-page screenshot library -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
 <style>
 
@@ -373,13 +373,13 @@ video {
         </div>
 
 
-        <!-- SEND BUTTON -->
+        <!-- FULL PAGE SCREENSHOT BUTTON -->
 
         <button class="send-button"
-                id="sendButton"
-                onclick="sendReport()">
+                id="screenshotButton"
+                onclick="takeFullPageScreenshot()">
 
-            ✉️ GENERATE PDF & OPEN OUTLOOK
+            📸 TAKE FULL PAGE SCREENSHOT
 
         </button>
 
@@ -406,17 +406,6 @@ video {
 <script>
 
 // ==========================================
-// CONFIGURATION
-// ==========================================
-
-// Change this to your manager's email address.
-
-const MANAGER_EMAIL = "manager@company.com";
-
-const EMAIL_SUBJECT = "Employee Location Report";
-
-
-// ==========================================
 // GLOBAL VARIABLES
 // ==========================================
 
@@ -426,7 +415,7 @@ let latitude = null;
 let longitude = null;
 let locationAccuracy = null;
 
-let isSending = false;
+let isCapturingScreenshot = false;
 
 
 // ==========================================
@@ -672,377 +661,96 @@ function showMap(lat, lng) {
 
 
 // ==========================================
-// CAPTURE PHOTO
+// FULL PAGE SCREENSHOT
 // ==========================================
 
-function capturePhoto() {
+async function takeFullPageScreenshot() {
 
-    const video =
-        document.getElementById("video");
-
-    if (!cameraStream ||
-        !video.videoWidth ||
-        !video.videoHeight) {
-
-        throw new Error(
-            "Camera is not ready. Please enable camera access."
-        );
-
-    }
-
-    const canvas =
-        document.createElement("canvas");
-
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-
-    const context =
-        canvas.getContext("2d");
-
-    context.drawImage(
-        video,
-        0,
-        0,
-        canvas.width,
-        canvas.height
-    );
-
-    return new Promise((resolve, reject) => {
-
-        canvas.toBlob(
-
-            blob => {
-
-                if (blob) {
-                    resolve(blob);
-                } else {
-                    reject(
-                        new Error("Photo capture failed.")
-                    );
-                }
-
-            },
-
-            "image/jpeg",
-
-            0.85
-
-        );
-
-    });
-
-}
-
-
-// ==========================================
-// CONVERT PHOTO TO BASE64
-// ==========================================
-
-function blobToBase64(blob) {
-
-    return new Promise((resolve, reject) => {
-
-        const reader = new FileReader();
-
-        reader.onload = () => resolve(reader.result);
-
-        reader.onerror = () => reject(
-            new Error("Unable to read photograph.")
-        );
-
-        reader.readAsDataURL(blob);
-
-    });
-
-}
-
-
-// ==========================================
-// GENERATE PDF
-// ==========================================
-
-async function generatePDF(photoData, position) {
-
-    const lat = position.coords.latitude;
-    const lng = position.coords.longitude;
-
-    const accuracy = position.coords.accuracy;
-
-    const reportTime = new Date().toLocaleString();
-
-    const report = document.createElement("div");
-
-    report.style.padding = "25px";
-    report.style.fontFamily = "Arial";
-    report.style.color = "#263445";
-    report.style.background = "#ffffff";
-
-    report.innerHTML = `
-
-        <div style="
-            border-bottom:3px solid #123c63;
-            padding-bottom:15px;">
-
-            <h2 style="color:#123c63;">
-                Employee Location Report
-            </h2>
-
-            <p style="color:#64748b;">
-                Photograph and geographical location report
-            </p>
-
-        </div>
-
-        <h3>Report Details</h3>
-
-        <p>
-            <b>Date & Time:</b>
-            ${reportTime}
-        </p>
-
-        <p>
-            <b>Latitude:</b>
-            ${lat}
-        </p>
-
-        <p>
-            <b>Longitude:</b>
-            ${lng}
-        </p>
-
-        <p>
-            <b>Location Accuracy:</b>
-            ±${Math.round(accuracy)} metres
-        </p>
-
-        <h3>Captured Photograph</h3>
-
-        <img src="${photoData}"
-             style="
-                width:100%;
-                max-width:450px;
-                border-radius:8px;
-             ">
-
-        <h3>Location Reference</h3>
-
-        <p>
-            <a href="https://www.google.com/maps?q=${lat},${lng}">
-                View Location in Google Maps
-            </a>
-        </p>
-
-        <p style="
-            margin-top:35px;
-            color:#64748b;
-            font-size:11px;
-            border-top:1px solid #ddd;
-            padding-top:12px;">
-
-            Automatically generated employee location report.
-
-        </p>
-
-    `;
-
-    document.body.appendChild(report);
-
-    try {
-
-        const options = {
-
-            margin: 10,
-
-            filename: "Employee_Location_Report.pdf",
-
-            image: {
-                type: "jpeg",
-                quality: 0.95
-            },
-
-            html2canvas: {
-                scale: 2,
-                useCORS: true
-            },
-
-            jsPDF: {
-                unit: "mm",
-                format: "a4",
-                orientation: "portrait"
-            }
-
-        };
-
-        await html2pdf()
-            .set(options)
-            .from(report)
-            .save();
-
-    }
-
-    finally {
-
-        document.body.removeChild(report);
-
-    }
-
-}
-
-
-// ==========================================
-// OPEN OUTLOOK
-// ==========================================
-
-function openOutlook(position) {
-
-    const lat = position.coords.latitude;
-    const lng = position.coords.longitude;
-
-    const accuracy = position.coords.accuracy;
-
-    const reportTime = new Date().toLocaleString();
-
-    const subject = EMAIL_SUBJECT;
-
-    const body = `Hello,
-
-Please find my latest location report.
-
-Date & Time: ${reportTime}
-
-Latitude: ${lat}
-Longitude: ${lng}
-Accuracy: ${Math.round(accuracy)} metres
-
-Google Maps:
-https://www.google.com/maps?q=${lat},${lng}
-
-Please find the generated PDF report attached.
-
-Regards`;
-
-    const outlookURL =
-        "mailto:" +
-        MANAGER_EMAIL +
-        "?subject=" +
-        encodeURIComponent(subject) +
-        "&body=" +
-        encodeURIComponent(body);
-
-    window.location.href = outlookURL;
-
-}
-
-
-// ==========================================
-// SEND REPORT
-// ==========================================
-
-async function sendReport() {
-
-    if (isSending) return;
+    if (isCapturingScreenshot) return;
 
     const button =
-        document.getElementById("sendButton");
+        document.getElementById("screenshotButton");
 
     const message =
         document.getElementById("message");
 
     try {
 
-        if (!cameraStream) {
-
+        if (typeof html2canvas === "undefined") {
             throw new Error(
-                "Please enable camera access first."
+                "Screenshot library could not be loaded. Check your internet connection."
             );
-
         }
 
-        if (typeof html2pdf === "undefined") {
-
-            throw new Error(
-                "PDF library could not be loaded. Check your internet connection."
-            );
-
-        }
-
-        isSending = true;
-
+        isCapturingScreenshot = true;
         button.disabled = true;
-
-        button.innerText =
-            "PROCESSING REPORT...";
-
-        // STEP 1: Capture photograph
+        button.innerText = "CAPTURING FULL PAGE...";
 
         message.innerText =
-            "Step 1 of 3: Capturing photograph...";
+            "Capturing the complete webpage. Please wait...";
 
-        const photoBlob = await capturePhoto();
+        // Allow the browser to render the latest clock/location updates.
+        await new Promise(resolve => requestAnimationFrame(resolve));
 
-        // STEP 2: Refresh GPS location
+        const pageWidth = Math.max(
+            document.documentElement.scrollWidth,
+            document.body.scrollWidth
+        );
+
+        const pageHeight = Math.max(
+            document.documentElement.scrollHeight,
+            document.body.scrollHeight
+        );
+
+        const canvas = await html2canvas(
+            document.documentElement,
+            {
+                scale: 2,
+                useCORS: true,
+                allowTaint: false,
+                backgroundColor: "#f1f5f9",
+                width: pageWidth,
+                height: pageHeight,
+                windowWidth: pageWidth,
+                windowHeight: pageHeight,
+                scrollX: 0,
+                scrollY: -window.scrollY
+            }
+        );
+
+        const imageURL = canvas.toDataURL("image/png");
+
+        const link = document.createElement("a");
+        link.href = imageURL;
+        link.download =
+            "Employee_Location_Screenshot_" +
+            new Date().toISOString().replace(/[:.]/g, "-") +
+            ".png";
+
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
 
         message.innerText =
-            "Step 2 of 3: Refreshing GPS location...";
+            "Full-page screenshot captured and downloaded successfully.";
 
-        const position = await getLocation();
-
-        // STEP 3: Generate PDF
-
-        message.innerText =
-            "Step 3 of 3: Generating PDF report...";
-
-        const photoData =
-            await blobToBase64(photoBlob);
-
-        await generatePDF(photoData, position);
-
-        // STEP 4: Open Outlook
-
-        message.innerText =
-            "PDF generated. Opening your email application...";
-
-        button.innerText =
-            "PDF GENERATED ✓";
-
-        // Stop camera
-
-        if (cameraStream) {
-
-            cameraStream.getTracks().forEach(track => {
-                track.stop();
-            });
-
-            cameraStream = null;
-
-        }
-
-        openOutlook(position);
-
-        message.innerText =
-            "PDF downloaded. Please attach it to the email and send.";
-
-        button.innerText =
-            "✓ REPORT PREPARED";
+        button.innerText = "✓ SCREENSHOT CAPTURED";
 
     }
 
     catch(error) {
 
         message.innerText =
-            "Unable to prepare report: " +
-            error.message;
+            "Unable to capture screenshot: " + error.message;
 
+        button.innerText = "📸 TAKE FULL PAGE SCREENSHOT";
         button.disabled = false;
-
-        button.innerText =
-            "✉️ GENERATE PDF & OPEN OUTLOOK";
 
     }
 
     finally {
 
-        isSending = false;
+        isCapturingScreenshot = false;
 
     }
 
